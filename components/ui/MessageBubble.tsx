@@ -1,51 +1,59 @@
-import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm'; // For Tables support
-import { Bot, User } from 'lucide-react';
-import { Message } from '@/types';
-import clsx from 'clsx';
+"use client";
+import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Bot, User } from "lucide-react";
+import { Message } from "@/types";
+import clsx from "clsx";
 
-interface Props {
-  message: Message;
-}
-
-export const MessageBubble: React.FC<Props> = ({ message }) => {
-  const isAi = message.role === 'model';
+export const MessageBubble: React.FC<{ message: Message }> = ({ message }) => {
+  const isAI = message.role === "model";
 
   return (
-    <div className={clsx("flex w-full mb-4", isAi ? "justify-start" : "justify-end")}>
-      <div className={clsx("flex max-w-[80%] md:max-w-[70%]", isAi ? "flex-row" : "flex-row-reverse")}>
-        
-        {/* Avatar */}
-        <div className={clsx(
-          " h-10 w-10 rounded-full flex items-center justify-center mx-2",
-          isAi ? "bg-blue-600 text-white" : "bg-gray-300 text-gray-700"
-        )}>
-          {isAi ? <Bot size={20} /> : <User size={20} />}
-        </div>
-
-        {/* Bubble Content */}
-        <div className={clsx(
-          "p-4 rounded-2xl shadow-sm text-sm leading-relaxed overflow-hidden",
-          isAi ? "bg-white border border-gray-200 text-gray-800" : "bg-blue-600 text-white"
-        )}>
-          {isAi ? (
-            // Render Markdown for AI (Tables, Lists, Bold)
-            <ReactMarkdown 
+    <div className="w-full flex justify-center">
+      <div
+        className={clsx(
+          "relative max-w-[700px] w-full px-4 flex",
+          isAI ? "justify-start" : "justify-end"
+        )}
+      >
+        {/* Bubble */}
+        <div
+          className={clsx(
+            "rounded-3xl px-6 py-4 mb-8 shadow-xl backdrop-blur-xl",
+            "transition-transform duration-300 hover:scale-[1.01]",
+            isAI
+              ? "bg-white/60 text-gray-900 border border-white/40"
+              : "bg-indigo-600 text-white shadow-indigo-300/40"
+          )}
+        >
+          {isAI ? (
+            <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-            //   className="prose prose-sm max-w-none"
-              components={{
-                table: ({node, ...props}) => <table className="min-w-full border-collapse border border-gray-300 my-2" {...props} />,
-                th: ({node, ...props}) => <th className="bg-gray-100 border border-gray-300 px-2 py-1" {...props} />,
-                td: ({node, ...props}) => <td className="border border-gray-300 px-2 py-1" {...props} />,
-              }}
+              // className="prose prose-sm max-w-none text-gray-800"
             >
               {message.content}
             </ReactMarkdown>
           ) : (
-            // Plain text for User
             <p className="whitespace-pre-wrap">{message.content}</p>
           )}
+        </div>
+
+        {/* Avatar */}
+        <div
+          className={clsx(
+            "absolute top-0",
+            isAI ? "-left-10" : "-right-10"
+          )}
+        >
+          <div
+            className={clsx(
+              "h-10 w-10 rounded-2xl shadow-lg flex items-center justify-center backdrop-blur-xl",
+              isAI ? "bg-white/70 text-indigo-600" : "bg-indigo-600 text-white"
+            )}
+          >
+            {isAI ? <Bot size={18} /> : <User size={18} />}
+          </div>
         </div>
       </div>
     </div>

@@ -1,93 +1,138 @@
 "use client";
-import React from 'react'; // Removed unused imports
-import { useQuery } from '@tanstack/react-query'; // Industrial Data Fetching
-import { MessageSquare, Plus, User, Settings, ShieldCheck, Loader2 } from 'lucide-react';
+
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { MessageSquare, Plus, User, Settings, ShieldCheck, Loader2 } from "lucide-react";
 
 interface Props {
   onNewChat: () => void;
-  onSelectChat: (sessionId: string) => void; // New prop to handle clicks
+  onSelectChat: (sessionId: string) => void;
   isOpen: boolean;
   currentSessionId: string;
 }
 
-// Define what a Session looks like from API
 interface ChatSession {
   session_id: string;
   title: string;
-  last_active: string;
+  last_active?: string;
 }
 
 export const Sidebar: React.FC<Props> = ({ onNewChat, onSelectChat, isOpen, currentSessionId }) => {
-  
-  // 1. Fetch Real History from Backend
-  const { data: sessions, isLoading } = useQuery({
-    queryKey: ['chatHistory'],
+  const { data: sessions = [], isLoading } = useQuery<ChatSession[], Error>({
+    queryKey: ["chatHistory"],
     queryFn: async () => {
-      const res = await fetch('http://localhost:5000/api/chat/history');
+      const res = await fetch("http://localhost:5000/api/chat/history");
       const json = await res.json();
-      return json.data as ChatSession[];
+      return json?.data ?? [];
     },
-    // Refresh history every 5 seconds so new chats appear automatically
-    refetchInterval: 5000 
+    refetchInterval: 5000,
+    enabled: isOpen,
   });
 
   if (!isOpen) return null;
 
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col h-screen border-r border-gray-800 transition-all duration-300">
+    <aside className="
+      h-screen w-72 p-5 
+      bg-white/40 backdrop-blur-3xl 
+      border-r border-white/40 
+      shadow-[0_8px_30px_rgb(0,0,0,0.06)]
+      flex flex-col
+      z-50
+    ">
+      
       {/* Header */}
-      <div className="p-4">
-        <div className="flex items-center gap-2 mb-6 text-blue-400 font-bold text-lg">
-          <ShieldCheck /> SLIC CoverChat
+      <div className="flex items-center gap-3 mb-6">
+        <div className="h-10 w-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
+          <ShieldCheck size={20} />
         </div>
-        
-        <button 
-          onClick={onNewChat}
-          className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-lg transition-all shadow-md"
-        >
-          <Plus size={18} /> New Chat
-        </button>
+        <span className="text-lg font-semibold text-gray-800">CoverChat</span>
       </div>
 
-      {/* Real History List */}
-      <div className="flex-1 overflow-y-auto px-2">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Recent</h3>
-        
-        {isLoading ? (
-          <div className="text-gray-500 text-sm p-4 flex gap-2">
-            <Loader2 className="animate-spin" size={16} /> Loading...
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {sessions?.map((chat) => (
-              <button 
-                key={chat.session_id}
-                onClick={() => onSelectChat(chat.session_id)}
-                className={`w-full text-left flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition truncate
-                  ${currentSessionId === chat.session_id ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}
-                `}
-              >
-                <MessageSquare size={16} className="shrink-0" />
-                <span className="truncate">{chat.title}</span>
-              </button>
-            ))}
+      {/* New Chat Button */}
+      <button
+        onClick={onNewChat}
+        className="
+          w-full py-3 
+          bg-indigo-600 hover:bg-indigo-700 
+          text-white rounded-2xl 
+          shadow-md shadow-indigo-300/40 
+          flex items-center justify-center gap-2 
+          transition-all duration-300
+        "
+      >
+        <Plus size={18} /> New Chat
+      </button>
+
+      {/* Chat List */}
+      <div className="flex-1 mt-5 overflow-y-auto pr-1">
+        <p className="text-xs text-gray-500 mb-3">Recent</p>
+
+        {isLoading && (
+          <div className="flex items-center gap-2 text-gray-500 text-sm px-2">
+            <Loader2 size={16} className="animate-spin" /> Loading…
           </div>
         )}
+
+        {/* Empty */}
+        {!isLoading && sessions.length === 0 && (
+          <div className="text-sm text-gray-500 px-2">No chats yet</div>
+        )}
+
+        {/* List */}
+        {sessions.map((chat) => (
+          <button
+            key={chat.session_id}
+            onClick={() => onSelectChat(chat.session_id)}
+            className={`
+              w-full text-left px-3 py-3 mb-2 rounded-2xl 
+              flex items-center gap-3 
+              transition-all duration-200
+              backdrop-blur-xl border
+
+              ${
+                currentSessionId === chat.session_id
+                  ? "bg-indigo-600 border-indigo-500 text-white shadow-lg"
+                  : "bg-white/60 hover:bg-white/80 border-white/50 text-gray-700 shadow-sm"
+              }
+            `}
+          >
+            <div
+              className={`
+                h-8 w-8 rounded-xl flex items-center justify-center shadow-sm
+                ${
+                  currentSessionId === chat.session_id
+                    ? "bg-white/20"
+                    : "bg-white/80"
+                }
+              `}
+            >
+              <MessageSquare
+                size={17}
+                className={currentSessionId === chat.session_id ? "text-white" : "text-gray-600"}
+              />
+            </div>
+
+            <span className="truncate">{chat.title}</span>
+          </button>
+        ))}
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-800">
-        <button className="flex items-center gap-3 w-full hover:bg-gray-800 p-2 rounded-lg transition text-sm">
-          <div className="h-8 w-8 bg-blue-900 rounded-full flex items-center justify-center">
+      <div className="pt-4 border-t border-white/40">
+        <button className="flex items-center w-full gap-3 px-2 py-3 rounded-xl hover:bg-white/60 transition">
+          <div className="h-9 w-9 bg-indigo-600 text-white flex items-center justify-center rounded-xl shadow-md">
             <User size={16} />
           </div>
-          <div className="flex flex-col text-left">
-            <span className="font-medium text-white">Kasun Perera</span>
-            <span className="text-xs text-gray-400">Online</span>
+
+          <div className="flex flex-col">
+            <span className="font-medium text-gray-900">Kasun Perera</span>
+            <span className="text-xs text-gray-500">Online</span>
           </div>
-          <Settings size={16} className="ml-auto text-gray-500" />
+
+          <Settings size={16} className="ml-auto text-gray-400" />
         </button>
       </div>
-    </div>
+    </aside>
   );
 };
