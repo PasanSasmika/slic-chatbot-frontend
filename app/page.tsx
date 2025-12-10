@@ -1,53 +1,35 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { Sidebar } from '@/components/Sidebar';
-import { Menu } from 'lucide-react';
-import ChatWindow from '@/components/ui/ChatWindow';
+import React, { useState, useEffect } from "react";
+import { Sidebar } from "@/components/Sidebar";
+import ChatWindow from "@/components/ui/ChatWindow";
 
 export default function Home() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
-  
-  // State to track which chat is active
-  // If empty, it means "New Chat"
-  const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  const [currentSessionId, setCurrentSessionId] = useState("");
 
-  // Generate a random ID for new chats
+  // Auto-generate session ID
   useEffect(() => {
-    if (!currentSessionId) {
-      setCurrentSessionId(`session-${Date.now()}`);
-    }
+    if (!currentSessionId) setCurrentSessionId(`session-${Date.now()}`);
   }, []);
 
-  const handleNewChat = () => {
-    setCurrentSessionId(`session-${Date.now()}`); // Create fresh ID
-  };
-
   return (
-    <main className="flex h-screen bg-gray-50 overflow-hidden relative">
+    <main className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans">
       
-      {/* Sidebar with Real Data */}
-      <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-gray-900 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-         <Sidebar 
-           onNewChat={handleNewChat} 
-           isOpen={true} 
-           onSelectChat={setCurrentSessionId} // Switch chat on click
-           currentSessionId={currentSessionId}
-         />
-      </div>
+      {/* Sidebar - Controlled by State */}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        currentSessionId={currentSessionId}
+        onNewChat={() => setCurrentSessionId(`session-${Date.now()}`)}
+        onSelectChat={(id) => setCurrentSessionId(id)}
+      />
 
-      <div className="flex-1 flex flex-col h-full w-full relative">
-        <div className="absolute top-3 left-3 md:hidden z-50">
-          <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 bg-white rounded-full shadow-md border border-gray-200">
-            <Menu size={20} />
-          </button>
-        </div>
-
-        {/* Pass the Session ID to the Window */}
-        <ChatWindow key={currentSessionId} sessionId={currentSessionId} />
-        
-        {isSidebarOpen && (
-          <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setSidebarOpen(false)}></div>
-        )}
+      {/* Main Content */}
+      <div className="flex-1 h-full relative">
+        <ChatWindow 
+          sessionId={currentSessionId} 
+          toggleSidebar={() => setSidebarOpen(!isSidebarOpen)} 
+        />
       </div>
     </main>
   );

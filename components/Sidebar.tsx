@@ -1,24 +1,23 @@
 "use client";
-
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MessageSquare, Plus, User, Settings, ShieldCheck, Loader2 } from "lucide-react";
+import { MessageSquare, Plus, User, Settings, ShieldCheck, Loader2, X } from "lucide-react";
 
 interface Props {
   onNewChat: () => void;
   onSelectChat: (sessionId: string) => void;
   isOpen: boolean;
+  onClose: () => void; // Added close function for mobile
   currentSessionId: string;
 }
 
 interface ChatSession {
   session_id: string;
   title: string;
-  last_active?: string;
 }
 
-export const Sidebar: React.FC<Props> = ({ onNewChat, onSelectChat, isOpen, currentSessionId }) => {
-  const { data: sessions = [], isLoading } = useQuery<ChatSession[], Error>({
+export const Sidebar: React.FC<Props> = ({ onNewChat, onSelectChat, isOpen, onClose, currentSessionId }) => {
+  const { data: sessions = [], isLoading } = useQuery<ChatSession[]>({
     queryKey: ["chatHistory"],
     queryFn: async () => {
       const res = await fetch("http://localhost:5000/api/chat/history");
@@ -26,113 +25,94 @@ export const Sidebar: React.FC<Props> = ({ onNewChat, onSelectChat, isOpen, curr
       return json?.data ?? [];
     },
     refetchInterval: 5000,
-    enabled: isOpen,
   });
 
-  if (!isOpen) return null;
-
   return (
-    <aside className="
-      h-screen w-72 p-5 
-      bg-white/40 backdrop-blur-3xl 
-      border-r border-white/40 
-      shadow-[0_8px_30px_rgb(0,0,0,0.06)]
-      flex flex-col
-      z-50
-    ">
-      
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="h-10 w-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
-          <ShieldCheck size={20} />
-        </div>
-        <span className="text-lg font-semibold text-gray-800">CoverChat</span>
-      </div>
+    <>
+      {/* Mobile Overlay */}
+      <div 
+        className={`fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300 md:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
+        onClick={onClose}
+      />
 
-      {/* New Chat Button */}
-      <button
-        onClick={onNewChat}
-        className="
-          w-full py-3 
-          bg-indigo-600 hover:bg-indigo-700 
-          text-white rounded-2xl 
-          shadow-md shadow-indigo-300/40 
-          flex items-center justify-center gap-2 
-          transition-all duration-300
-        "
+      {/* Sidebar Container */}
+      <aside
+        className={`
+          fixed md:relative z-50 h-screen w-80 flex flex-col
+          bg-white/60 backdrop-blur-2xl border-r border-white/40 shadow-[10px_0_40px_rgba(0,0,0,0.05)]
+          transition-all duration-500 ease-out
+          ${isOpen ? "translate-x-0" : "-translate-x-full md:hidden"}
+        `}
       >
-        <Plus size={18} /> New Chat
-      </button>
-
-      {/* Chat List */}
-      <div className="flex-1 mt-5 overflow-y-auto pr-1">
-        <p className="text-xs text-gray-500 mb-3">Recent</p>
-
-        {isLoading && (
-          <div className="flex items-center gap-2 text-gray-500 text-sm px-2">
-            <Loader2 size={16} className="animate-spin" /> Loading…
+        {/* Header */}
+        <div className="p-6 pb-2">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-[#0dafbc] to-[#dfc550] flex items-center justify-center text-white shadow-lg shadow-[#0dafbc]/30">
+                <ShieldCheck size={22} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 tracking-tight">CoverChat</h2>
+                <span className="text-[10px] uppercase font-bold text-[#0dafbc] tracking-widest bg-[#0dafbc]/10 px-2 py-0.5 rounded-full">AI Assistant</span>
+              </div>
+            </div>
+            {/* Mobile Close Button */}
+            <button onClick={onClose} className="md:hidden p-2 text-slate-400 hover:text-red-500 transition">
+              <X size={24} />
+            </button>
           </div>
-        )}
 
-        {/* Empty */}
-        {!isLoading && sessions.length === 0 && (
-          <div className="text-sm text-gray-500 px-2">No chats yet</div>
-        )}
-
-        {/* List */}
-        {sessions.map((chat) => (
           <button
-            key={chat.session_id}
-            onClick={() => onSelectChat(chat.session_id)}
-            className={`
-              w-full text-left px-3 py-3 mb-2 rounded-2xl 
-              flex items-center gap-3 
-              transition-all duration-200
-              backdrop-blur-xl border
-
-              ${
-                currentSessionId === chat.session_id
-                  ? "bg-indigo-600 border-indigo-500 text-white shadow-lg"
-                  : "bg-white/60 hover:bg-white/80 border-white/50 text-gray-700 shadow-sm"
-              }
-            `}
+            onClick={() => { onNewChat(); onClose(); }}
+            className="w-full py-3.5 bg-gradient-to-r from-[#0dafbc] to-[#00c2cb] hover:shadow-lg hover:shadow-[#0dafbc]/30 text-white rounded-2xl flex items-center justify-center gap-2 font-medium transition-all duration-300 transform active:scale-95 group"
           >
-            <div
+            <Plus size={20} className="group-hover:rotate-90 transition-transform" /> 
+            Start New Chat
+          </button>
+        </div>
+
+        {/* Chat List */}
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2 custom-scrollbar">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest px-2 mb-2">History</p>
+          
+          {isLoading && (
+            <div className="flex justify-center py-4 text-[#0dafbc]">
+              <Loader2 className="animate-spin" />
+            </div>
+          )}
+
+          {sessions.map((chat) => (
+            <button
+              key={chat.session_id}
+              onClick={() => { onSelectChat(chat.session_id); onClose(); }}
               className={`
-                h-8 w-8 rounded-xl flex items-center justify-center shadow-sm
-                ${
-                  currentSessionId === chat.session_id
-                    ? "bg-white/20"
-                    : "bg-white/80"
+                w-full text-left px-4 py-3 rounded-2xl flex items-center gap-3 transition-all duration-300 border
+                ${currentSessionId === chat.session_id
+                  ? "bg-[#0dafbc]/10 border-[#0dafbc]/30 text-[#0dafbc] shadow-sm"
+                  : "bg-transparent border-transparent text-slate-600 hover:bg-white/50 hover:border-white"
                 }
               `}
             >
-              <MessageSquare
-                size={17}
-                className={currentSessionId === chat.session_id ? "text-white" : "text-gray-600"}
-              />
+              <MessageSquare size={18} className={currentSessionId === chat.session_id ? "fill-current" : "opacity-50"} />
+              <span className="truncate text-sm font-medium">{chat.title}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* User Footer */}
+        <div className="p-4 border-t border-white/40 bg-white/30">
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/60 border border-white shadow-sm">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-slate-200 to-white border-2 border-white shadow-sm flex items-center justify-center">
+              <User size={20} className="text-slate-400" />
             </div>
-
-            <span className="truncate">{chat.title}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div className="pt-4 border-t border-white/40">
-        <button className="flex items-center w-full gap-3 px-2 py-3 rounded-xl hover:bg-white/60 transition">
-          <div className="h-9 w-9 bg-indigo-600 text-white flex items-center justify-center rounded-xl shadow-md">
-            <User size={16} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-700 truncate">Kasun Perera</p>
+              <p className="text-xs text-[#dfc550] font-medium">Gold Member</p>
+            </div>
+            <Settings size={18} className="text-slate-400 hover:text-[#0dafbc] cursor-pointer transition-colors" />
           </div>
-
-          <div className="flex flex-col">
-            <span className="font-medium text-gray-900">Kasun Perera</span>
-            <span className="text-xs text-gray-500">Online</span>
-          </div>
-
-          <Settings size={16} className="ml-auto text-gray-400" />
-        </button>
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </>
   );
 };
