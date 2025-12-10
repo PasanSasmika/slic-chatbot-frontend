@@ -1,31 +1,34 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Loader2, Menu } from "lucide-react";
+import { Send, Loader2, Menu, PanelLeftOpen } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { MessageBubble } from "./MessageBubble";
 import { ChatService } from "@/services/api";
 import { Message } from "@/types";
+import { MessageBubble } from "./MessageBubble";
 
 interface Props {
   sessionId: string;
-  toggleSidebar: () => void; // Added prop to open sidebar
+  toggleSidebar: () => void;
+  isSidebarOpen: boolean;
 }
 
-export default function ChatWindow({ sessionId, toggleSidebar }: Props) {
+export default function ChatWindow({ sessionId, toggleSidebar, isSidebarOpen }: Props) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch logic remains same...
+  // 1. Fetch History (Fixed Duplicate Key Error)
   const { data: serverMessages, isLoading: isFetchingHistory } = useQuery({
     queryKey: ["chatMessages", sessionId],
     queryFn: async () => {
       if (!sessionId) return [];
       const res = await fetch(`http://localhost:5000/api/chat/${sessionId}`);
       const json = await res.json();
-      return json.data.map((m: any) => ({
-        id: m.timestamp,
+      
+      // FIX: Added index to make ID unique
+      return json.data.map((m: any, index: number) => ({
+        id: `${m.timestamp}-${index}`, 
         role: m.role === "user" ? "user" : "model",
         content: m.content,
         timestamp: new Date(m.timestamp),
@@ -34,6 +37,7 @@ export default function ChatWindow({ sessionId, toggleSidebar }: Props) {
     enabled: !!sessionId,
   });
 
+  // 2. Sync State
   useEffect(() => {
     if (serverMessages && serverMessages.length > 0) {
       setMessages(serverMessages);
@@ -47,23 +51,38 @@ export default function ChatWindow({ sessionId, toggleSidebar }: Props) {
     }
   }, [serverMessages, sessionId]);
 
+  // 3. Auto Scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isSending]);
 
+  // 4. Send Logic
   const handleSend = async () => {
     if (!input.trim() || isSending) return;
-    const userMsg: Message = { id: Date.now().toString(), role: "user", content: input, timestamp: new Date() };
+    
+    // Create unique ID for local optimistic update
+    const userMsg: Message = { 
+        id: `local-${Date.now()}`, 
+        role: "user", 
+        content: input, 
+        timestamp: new Date() 
+    };
+    
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsSending(true);
 
     try {
       const aiResponse = await ChatService.sendMessage(userMsg.content, sessionId);
-      const aiMsg: Message = { id: (Date.now() + 1).toString(), role: "model", content: aiResponse, timestamp: new Date() };
+      const aiMsg: Message = { 
+          id: `ai-${Date.now()}`, // Unique ID
+          role: "model", 
+          content: aiResponse, 
+          timestamp: new Date() 
+      };
       setMessages((prev) => [...prev, aiMsg]);
     } catch {
-      setMessages((prev) => [...prev, { id: "err", role: "model", content: "⚠️ **Network Error**", timestamp: new Date() }]);
+      setMessages((prev) => [...prev, { id: `err-${Date.now()}`, role: "model", content: "⚠️ **Network Error**", timestamp: new Date() }]);
     } finally {
       setIsSending(false);
     }
@@ -72,29 +91,37 @@ export default function ChatWindow({ sessionId, toggleSidebar }: Props) {
   return (
     <div className="flex flex-col h-full relative overflow-hidden bg-[#f8fafc]">
       
-      {/* --- LIQUID BACKGROUND --- */}
-      <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-[#0dafbc]/20 rounded-full blur-[100px] opacity-50 animate-pulse" />
-      <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-[#dfc550]/10 rounded-full blur-[120px] opacity-50" />
-      <div className="absolute top-[20%] left-[20%] w-64 h-64 bg-blue-400/10 rounded-full blur-[80px]" />
+      {/* Background Ambience */}
+      <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-[#0dafbc]/10 rounded-full blur-[100px] opacity-60 pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-5%] w-[500px] h-[500px] bg-[#dfc550]/10 rounded-full blur-[120px] opacity-60 pointer-events-none" />
 
-      {/* --- HEADER --- */}
-      <div className="absolute top-0 left-0 right-0 z-20 px-6 py-4 flex items-center justify-between">
+      {/* HEADER BAR */}
+      <div className="absolute top-0 left-0 right-0 z-30 px-6 py-4 flex items-center justify-between pointer-events-none">
+        
+        {/* TOGGLE BUTTON (Pointer events auto) */}
         <button 
           onClick={toggleSidebar} 
-          className="p-2.5 bg-white/50 backdrop-blur-xl border border-white/60 rounded-xl shadow-sm text-slate-600 hover:text-[#0dafbc] hover:bg-white transition-all md:hidden"
+          className={`
+            pointer-events-auto p-2.5 rounded-xl shadow-sm border border-slate-200 transition-all duration-300
+            ${isSidebarOpen 
+               ? 'bg-white/50 text-slate-400 md:opacity-0 md:pointer-events-none' // Hidden on Desktop if Open
+               : 'bg-white text-slate-700 hover:text-[#0dafbc] shadow-md opacity-100' // Always Visible if Closed
+            }
+          `}
+          title={isSidebarOpen ? "Close Menu" : "Open Menu"}
         >
-          <Menu size={20} />
+          {isSidebarOpen ? <Menu size={20} /> : <PanelLeftOpen size={20} />}
         </button>
-        
-        {/* Only show Title on Mobile in header, desktop has sidebar */}
-        <span className="md:hidden font-bold text-slate-700 bg-white/40 px-3 py-1 rounded-full backdrop-blur-md text-sm">
+
+        {/* Mobile Title */}
+        <span className="md:hidden font-bold text-slate-700 bg-white/40 px-3 py-1 rounded-full backdrop-blur-md text-sm pointer-events-auto">
           CoverChat AI
         </span>
-        <div className="w-10 md:hidden" /> {/* Spacer */}
+        <div className="w-10 md:hidden" />
       </div>
 
-      {/* --- CHAT AREA --- */}
-      <div className="relative z-10 flex-1 overflow-y-auto pt-20 pb-32 px-4 md:px-10 scroll-smooth">
+      {/* Chat Area */}
+      <div className="relative z-10 flex-1 overflow-y-auto pt-20 pb-32 px-4 md:px-10 scroll-smooth custom-scrollbar">
         {isFetchingHistory && (
           <div className="flex justify-center my-4">
             <Loader2 className="animate-spin text-[#0dafbc]" />
@@ -117,10 +144,9 @@ export default function ChatWindow({ sessionId, toggleSidebar }: Props) {
         </div>
       </div>
 
-      {/* --- FLOATING INPUT --- */}
+      {/* Floating Input */}
       <div className="absolute bottom-6 left-0 right-0 z-20 flex justify-center px-4">
         <div className="w-full max-w-3xl bg-white/70 backdrop-blur-2xl border border-white/50 shadow-[0_20px_40px_rgba(0,0,0,0.1)] rounded-3xl p-2 flex items-center gap-2 transition-all focus-within:ring-2 focus-within:ring-[#0dafbc]/30 focus-within:scale-[1.01]">
-          
           <input
             type="text"
             value={input}
@@ -130,7 +156,6 @@ export default function ChatWindow({ sessionId, toggleSidebar }: Props) {
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             className="flex-1 bg-transparent border-none outline-none px-4 py-3 text-slate-700 placeholder-slate-400 font-medium"
           />
-
           <button
             onClick={handleSend}
             disabled={isSending || !input.trim()}
