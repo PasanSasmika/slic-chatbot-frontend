@@ -19,23 +19,24 @@ export default function ChatWindow({ sessionId, toggleSidebar, isSidebarOpen }: 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // 1. Fetch History (Fixed Duplicate Key Error)
-  const { data: serverMessages, isLoading: isFetchingHistory } = useQuery({
-    queryKey: ["chatMessages", sessionId],
-    queryFn: async () => {
-      if (!sessionId) return [];
-      const res = await fetch(`http://localhost:5000/api/chat/${sessionId}`);
-      const json = await res.json();
-      
-      // FIX: Added index to make ID unique
-      return json.data.map((m: any, index: number) => ({
-        id: `${m.timestamp}-${index}`, 
-        role: m.role === "user" ? "user" : "model",
-        content: m.content,
-        timestamp: new Date(m.timestamp),
-      }));
-    },
-    enabled: !!sessionId,
-  });
+ const { data: serverMessages, isLoading: isFetchingHistory } = useQuery({
+  queryKey: ["chatMessages", sessionId],
+  queryFn: async () => {
+    if (!sessionId) return [];
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/chat/${sessionId}`
+    );
+    const json = await res.json();
+    
+    return json.data.map((m: any, index: number) => ({
+      id: `${m.timestamp}-${index}`, 
+      role: m.role === "user" ? "user" : "model",
+      content: m.content,
+      timestamp: new Date(m.timestamp),
+    }));
+  },
+  enabled: !!sessionId,
+});
 
   // 2. Sync State
   useEffect(() => {

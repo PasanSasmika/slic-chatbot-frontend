@@ -1,6 +1,6 @@
 import { ChatResponse } from "@/types";
 
-const API_URL = "http://localhost:5000/api"; // Your Backend URL
+const API_URL = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 
 export const ChatService = {
   async sendMessage(message: string, sessionId: string): Promise<string> {
@@ -19,7 +19,7 @@ export const ChatService = {
       }
 
       const data: ChatResponse = await response.json();
-      return data.data.ai; // This must match your backend response structure
+      return data.data.ai;
     } catch (error) {
       console.error("API Error:", error);
       throw error;

@@ -20,25 +20,30 @@ export const Sidebar: React.FC<Props> = ({ onNewChat, onSelectChat, isOpen, onCl
   const queryClient = useQueryClient();
 
   const { data: sessions = [], isLoading } = useQuery<ChatSession[]>({
-    queryKey: ["chatHistory"],
-    queryFn: async () => {
-      const res = await fetch("http://localhost:5000/api/chat/history");
-      const json = await res.json();
-      return json?.data ?? [];
-    },
-    refetchInterval: 5000,
-  });
+  queryKey: ["chatHistory"],
+  queryFn: async () => {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/chat/history`
+    );
+    const json = await res.json();
+    return json?.data ?? [];
+  },
+  refetchInterval: 5000,
+});
 
   const deleteMutation = useMutation({
-    mutationFn: async (sessionId: string) => {
-      const res = await fetch(`http://localhost:5000/api/chat/${sessionId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      return sessionId;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["chatHistory"] });
-    }
-  });
+  mutationFn: async (sessionId: string) => {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/chat/${sessionId}`,
+      { method: "DELETE" }
+    );
+    if (!res.ok) throw new Error("Failed to delete");
+    return sessionId;
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["chatHistory"] });
+  }
+});
 
   const handleItemClick = (callback: () => void) => {
     callback();
